@@ -16,23 +16,27 @@ struct App {
     // а поля роняются сверху вниз — framebuffer должен умереть первым.
     framebuffer: Option<Framebuffer>,
     window: Option<Window>,
-    counter: u32,
+    count: u32,
 }
 
-fn draw(fb: &mut Framebuffer) {
-    fb.clear([0, 0, 0]);
-
+fn init(fb: &mut Framebuffer) {
     for y in 0..fb.height() {
-        for x in 0..fb.width() {
-            let r = (x % 256) as u8;
-            let g = (y % 256) as u8;
-            let b = ((x + y) % 256) as u8;
-            fb.set_pixel(x, y, [r, g, b]);
-        }
+            for x in 0..fb.width() {
+                let r = (x % 256) as u8;
+                let g = (y % 256) as u8;
+                let b = ((x + y) % 256) as u8;
+                fb.set_pixel(x, y, [r, g, b]);
+            }
     }
-
     fb.fill_rect(50, 50, 200, 150, [255, 0, 0]);
     fb.fill_rect(550, 400, 200, 150, [0, 0, 255]);
+}
+
+fn draw(fb: &mut Framebuffer, mut counter: u32) {
+    if counter == 50 {
+        fb.fill_rect(0, 0, WIDTH, HEIGHT, [0, 0, 0]);
+    }
+    fb.set_pixel(counter, counter,[255, 0, 0]);
 }
 
 impl ApplicationHandler for App {
@@ -48,6 +52,9 @@ impl ApplicationHandler for App {
             Ok(fb) => {
                 self.framebuffer = Some(fb);
                 self.window = Some(window);
+                if let Some(fb) = self.framebuffer.as_mut(){
+                    init(fb);
+                }
             }
             Err(e) => {
                 eprintln!("failed to create framebuffer: {e}");
@@ -69,14 +76,12 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(fb) = self.framebuffer.as_mut() {
-                    draw(fb);
-                    
-                    if self.counter > 100 || self.counter < 0{
-                        self.counter = 0;
+                    self.count += 1;
+                    if self.count > 100 {
+                        self.count = 0;
                     }
-                    fb.set_pixel(self.counter, self.counter,[255, 255, 255]);
-                    self.counter = self.counter + 1;
                     
+                    draw(fb, self.count);
                     if let Err(e) = fb.present() {
                         eprintln!("failed to present: {e}");
                         event_loop.exit();
@@ -92,7 +97,7 @@ impl ApplicationHandler for App {
 fn main() {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
-
+    
     let mut app = App::default();
     let _ = event_loop.run_app(&mut app);
 }
